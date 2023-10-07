@@ -1,8 +1,5 @@
 #include "malloc.h"
 
-#define alignto4bytes(x) (((((x) - 1)>>2)<<2)+4)
-#define BLOCK_SIZE 12
-
 // The base must be defined somewhere
 void* base = NULL;
 
@@ -48,10 +45,62 @@ void split_block(t_block b, size_t s) {
     b->next = new;
 }
 
+t_block fusion(t_block b) {
+    if (b->next && b->next->free) {
+        b->size += BLOCK_SIZE + b->next->size;
+        b->next = b->next->next;
+        
+        if (b->next)
+            b->next->prev = b;
+    }
+    return (b);
+}
+
+t_block get_block(void *p) {
+    char *tmp;
+    tmp = p;
+    
+    tmp -= BLOCK_SIZE;
+    p = tmp;
+    return (p);
+}
+
+int valid_addr(void* p) {
+    if (base) {
+        if (p > base && p < sbrk(0)) {
+            return (p == (get_block(p))->ptr);
+        }
+    }
+    return (0);
+}
+
+void free(void* p) {
+    t_block b;
+
+    if (valid_addr(p)) {
+        b = get_block(p);
+        b->free = 1;
+
+        // Fusion with prev
+        if (b->prev && b->prev->free) 
+            b = fusion(b->prev);
+        
+        if (b->next)
+            fusion(b);
+        else {
+            if (b->prev)
+                b->prev->next = NULL;
+            else 
+                base = NULL;
+            brk(b);
+        }
+    }
+}
+
 void* malloc(size_t size) {
     t_block b, last;
     size_t s;
-    s = alignto4bytes(size);
+    s = align4bytes(size);
 
     if (base) {
         // Finds block
