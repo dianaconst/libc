@@ -1,6 +1,6 @@
 # Malloc
 
-A basic malloc implementation.
+A basic first-fit malloc implementation.
 
 Signature: `void* malloc(size_t size);`
 
